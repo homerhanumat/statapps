@@ -1,0 +1,393 @@
+<html>
+
+<head>
+
+  <h3>Regression to the Mean</h3>
+
+  <style>
+    body {
+      margin: 0 auto;
+      margin-top: 1em;
+      display: table;
+      font-family: "Helvetica Neue", sans-serif;
+    }
+
+    svg {
+      padding-bottom: 16px;
+    }
+
+    .regression {
+      stroke-width: 2px;
+      stroke: blue;
+    }
+
+    .sdline {
+      stroke-width: 2px;
+      stroke: red;
+      stroke-dasharray: 10, 5;
+    }
+
+    .equation {
+      font-size: 12px;
+      margin-top: 5px;
+      text-align: center;
+    }
+
+    .axistext {
+      font-size: 14px;
+    }
+
+    #selector {
+      margin-left: 50px;
+    }
+
+    .kmeans {
+      visibility: hidden;
+    }
+
+    .meansPlot {
+      visibility: hidden;
+    }
+
+    .meanpoint {
+      visibility: hidden;
+    }
+
+    .kmeans rect {
+      opacity: 0.5;
+    }
+
+    .meanlevel {
+      stroke-width: 3px;
+      stroke: darkgreen;
+    }
+  </style>
+
+</head>
+
+
+<body>
+
+  <div>
+    <select id="selector">
+      <option value="noshow" selected>Do not show y-means</option>
+      <option value="rect" selected>Show mean of moving range</option>
+      <option value="all">Show all means</option>
+    </select>
+    <label for="rho">Target Correlation: </label>
+    <input id="rho" type="number" value="0.5" step="0.01" min="0" max="1">
+  </div>
+  <div class="chart"></div>
+  <div class="equation"></div>
+  <div class="equation"></div>
+
+  <script src="scripts/d3.min.js"></script>
+
+  <script>
+    // started from 
+    //:http://blockbuilder.org/uredkar/e87f0cf2925cd5a78ba919bf7a279e1d
+
+    // setup   
+    let margin = { top: 33, right: 5, bottom: 20, left: 50 },
+      width = 450 - margin.left - margin.right,
+      height = 450 - margin.top - margin.bottom;
+
+    // numer of points in scatterplot
+    let numberOfPoints = 500;
+
+    // initialize global to hold state info for vvarious elements
+    let elemInfo = {
+      // for mean-line and point in rectangles
+      meanInRange: undefined
+    }
+
+    // add listeners
+    document.querySelector("#selector")
+      .addEventListener("input", selectHandler);
+
+    document.querySelector("#rho")
+      .addEventListener("input", rhoHandler);
+      
+    // kick-off
+    document.querySelector("#rho").dispatchEvent(new Event('input'));
+
+    /// FUNCTIONS..................................................
+
+    function rhoHandler(e) {
+      let rho = this.value;
+      let data = bvn(n = numberOfPoints, rho = rho);
+
+      document.querySelector(".chart").innerHTML = "";
+      document.querySelector("#selector").value = "noshow";
+
+      let svg = d3.select(".chart").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      let x = d3.scaleLinear()
+        .range([0, width]);
+
+      let y = d3.scaleLinear()
+        .range([height, 0]);
+
+      let xAxis = d3.axisBottom()
+        .scale(x);
+
+      let yAxis = d3.axisLeft()
+        .scale(y);
+
+      // axis title variables     
+      let yaxistext = "y"
+      let xaxistext = "x"
+
+      // text label for the x axis
+      svg.append("text")
+        .attr("class", "axistext")
+        .attr("transform",
+          "translate(" + (width - margin.left) + " ," +
+          (height + margin.top) + ")")
+        .style("text-anchor", "middle")
+        .text(xaxistext);
+
+      // text label for the y axis
+      svg.append("text")
+        .attr("class", "axistext")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 0 - margin.left)
+        .attr("x", 0 - (height / 2))
+        .attr("dy", "1em")
+        .style("text-anchor", "middle")
+        .text(yaxistext)
+
+      // add basic axes, all points, calculate scales     
+      y.domain(d3.extent(data, function (d) { return d.y }));
+      x.domain(d3.extent(data, function (d) { return d.x }));
+      svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+      svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis);
+      svg.selectAll(".point")
+        .data(data)
+        .enter().append("circle")
+        .attr("class", "point")
+        .attr("r", 2)
+        .attr("cy", function (d) { return y(d.y); })
+        .attr("cx", function (d) { return x(d.x); })
+        ;
+
+      //  r, slope, regression ans sd lines
+      let xSeries = data.map(function (e) { return e.x; });
+      let ySeries = data.map(function (e) { return e.y; });
+      let {slope, intercept, rSquare, 
+        xBar, yBar, sdRatio} = leastSquares(xSeries, ySeries);
+      // regression line equation
+      document.getElementsByClassName("equation")[0]
+        .innerHTML = "y = " + round(slope, 2) + "x + " + round(intercept, 2);
+      // r
+      document.getElementsByClassName("equation")[1]
+        .innerHTML = "r = " + round(Math.sqrt(rSquare), 2);
+      // Add trendline
+      let ptAx = d3.min(xSeries);
+      let ptAy = slope * d3.min(xSeries) + intercept;
+      let ptBx = d3.max(xSeries);
+      let ptBy = intercept + slope * d3.max(xSeries);;
+      svg.append("line")
+        .attr("class", "regression")
+        .attr("x1", x(ptAx))
+        .attr("y1", y(ptAy))
+        .attr("x2", x(ptBx))
+        .attr("y2", y(ptBy))
+        ;
+      var ptsdAX = d3.min(xSeries);
+      var ptsdAY = yBar + sdRatio * (ptsdAX - xBar);
+      var ptsdBX = d3.max(xSeries);
+      var ptsdBY = yBar + sdRatio * (ptsdBX - xBar);
+
+      svg.append("line")
+        .attr("class", "sdline")
+        .attr("x1", x(ptsdAX))
+        .attr("y1", y(ptsdAY))
+        .attr("x2", x(ptsdBX))
+        .attr("y2", y(ptsdBY))
+        ;
+
+      svg.append("g")
+        .attr("class", "kmeans")
+        .attr("transform", `translate(${x(xBar) - 20}, 0)`)
+        ;
+      let kmeans = d3.select("g.kmeans");
+      kmeans.append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", 40)
+        .attr("height", height)
+        .attr("fill", "palegreen")
+        ;
+      kmeans.append("line")
+        .attr("class", "meanlevel")
+        .attr("x1", 0)
+        .attr("x2", 40)
+        .attr("y1", y(yBar))
+        .attr("y2", y(yBar))
+        ;
+      kmeans.append("circle")
+        .attr("class", "meanpoint")
+        .attr("r", 4)
+        .attr("fill", "darkgreen")
+        .attr("cx", 20)
+        .attr("cy", y(yBar))
+        ;
+
+      const dragHandler = d3.drag().on("drag", function () {
+        if (d3.event.x >= 0 && d3.event.x <= width - 40) {
+          d3.select(this)
+            .attr("transform", `translate(${d3.event.x}, 0)`);
+          let mean = meanInRange(data, x.invert(d3.event.x),
+            x.invert(d3.event.x + 40));
+          elemInfo.meanInRange = mean;
+          let line = d3.select(".meanlevel");
+          let meanPoint = d3.select(".meanpoint");
+          if (isNaN(mean)) {
+            line.style("visibility", "hidden");
+            meanPoint.style("visibility", "hidden");
+          } else {
+            line.attr("y1", y(mean)).attr("y2", y(mean));
+            meanPoint.attr("cy", y(mean));
+            line.style("visibility", "visible");
+            meanPoint.style("visibility", "visible");
+          }
+        }
+      });
+
+      dragHandler(kmeans);
+      
+      // make line graph of kmeans
+      let bandWidth = 0.2;
+      let step = (d3.max(xSeries) - d3.min(xSeries)) / 200;
+      let xvals = d3.range(d3.min(xSeries), d3.max(xSeries), step);
+      let pathPoints = [];
+      for (let i = 0; i < xvals.length; i++) {
+        let mean = meanInRange(data, xvals[i] - bandWidth,
+            xvals[i] + bandWidth);
+        if (!isNaN(mean)) {
+          pathPoints.push({x: xvals[i], y: mean});
+        }
+      }
+      let line = d3.line()
+        .x(function(d) { return x(d.x); })
+        .y(function(d) { return y(d.y); });
+      svg.append("path")
+      .datum(pathPoints)
+      .attr("class", "meansPlot")
+      .attr("fill", "none")
+      .attr("stroke", "darkgray")
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-linecap", "round")
+      .attr("stroke-width", 2.0)
+      .attr("d", line)
+      ;
+
+    }
+
+    function gaussian(a, b) {
+      return {
+        u: Math.sqrt(-2 * Math.log(a)) * Math.cos(2 * Math.PI * b),
+        v: Math.sqrt(-2 * Math.log(a)) * Math.sin(2 * Math.PI * b)
+      };
+    }
+
+    function bvn(n = 200, rho = 0.5, mu1 = 0, sigma1 = 1,
+      mu2 = 0, sigma2 = 1) {
+      let data = [];
+      for (let i = 0; i < n; i++) {
+        //generate two independent normals (box-muller)
+        let u1 = Math.random();
+        let u2 = Math.random();
+        let { u, v } = gaussian(u1, u2);
+        let x = mu1 + sigma1 * u;
+        let sdY = Math.sqrt((1 - Math.pow(rho, 2)) * Math.pow(sigma2, 2));
+        let y = mu2 + (sigma2 / sigma1) * rho * (u - mu1) + sdY * v;
+        data.push({ x: x, y: y });
+      }
+      return data;
+    }
+
+    function selectHandler(e) {
+      let selection = this.value;
+      if (selection === "noshow") {
+        d3.select(".kmeans").style("visibility", "hidden");
+        d3.select(".meanlevel").style("visibility", "hidden");
+        d3.select(".meanpoint").style("visibility", "hidden");
+        d3.select(".meansPlot").style("visibility", "hidden");
+      }
+      if (selection === "rect") {
+        d3.select(".kmeans").style("visibility", "visible");
+        d3.select(".meanlevel").style("visibility",
+          !isNaN(elemInfo.meanInRange) ? "visible" : "hidden");
+        d3.select(".meanpoint").style("visibility",
+          !isNaN(elemInfo.meanInRange) ? "visible" : "hidden");
+        d3.select(".meansPlot").style("visibility", "hidden");
+      }
+      if (selection === "all") {
+        d3.select(".kmeans").style("visibility", "hidden");
+        d3.select(".meanlevel").style("visibility", "hidden");
+        d3.select(".meanpoint").style("visibility", "hidden");
+        d3.select(".meansPlot").style("visibility", "visible");
+      }
+    }
+
+    function meanInRange(data, a, b) {
+      let sum = 0;
+      let count = 0;
+      for (let i = 0; i < data.length; i++) {
+        let x = data[i].x;
+        if (x >= a && x <= b) {
+          sum += data[i].y
+          count++
+        }
+      }
+      return (sum / count);
+    }
+
+
+    // round decimals   
+    function round(value, decimals) {
+      return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
+    }
+
+
+    // calculate linear regression
+    function leastSquares(xSeries, ySeries) {
+
+      let reduceSumFunc = function (prev, cur) { return prev + cur; }
+      let xBar = xSeries.reduce(reduceSumFunc) * 1.0 / xSeries.length;
+      let yBar = ySeries.reduce(reduceSumFunc) * 1.0 / ySeries.length;
+      let ssXX = xSeries.map(function (d) { return Math.pow(d - xBar, 2); })
+        .reduce(reduceSumFunc);
+
+      let ssYY = ySeries.map(function (d) { return Math.pow(d - yBar, 2); })
+        .reduce(reduceSumFunc);
+
+      let sdRatio = Math.sqrt(ssYY / ssXX);
+
+      let ssXY = xSeries.map(function (d, i) { return (d - xBar) * (ySeries[i] - yBar); })
+        .reduce(reduceSumFunc);
+
+      let slope = ssXY / ssXX;
+      let intercept = yBar - (xBar * slope);
+      let rSquare = Math.pow(ssXY, 2) / (ssXX * ssYY);
+
+      return {slope, intercept, rSquare, xBar, yBar, sdRatio};
+    }
+
+
+  </script>
+
+</body>
+
+</html>

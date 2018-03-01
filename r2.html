@@ -1,0 +1,97 @@
+<html>
+
+<head>
+
+  <h3>R-Squared</h3>
+
+  <style>
+    body {
+      margin: 0 auto;
+      margin-top: 1em;
+      display: table;
+      font-family: "Helvetica Neue", sans-serif;
+    }
+
+    svg {
+      padding-bottom: 16px;
+    }
+
+    .groupMean {
+      stroke-width: 3px;
+      stroke: blue;
+    }
+
+    .groupMeanUse {
+      stroke: transparent;
+		  stroke-width: 16px;;
+    }
+
+    .active {
+      cursor: move;
+      pointer-events: all;
+    }
+
+    .inactive {
+      visibility: hidden;
+      cursor: none;
+      pointer-events: none;
+    }
+
+    .groupYbar {
+      stroke-width: 2px;
+      stroke: red;
+      stroke-dasharray: 10, 5;
+    }
+
+    .ybb {
+      stroke-width: 3px;
+      stroke: red;
+      stroke-dasharray: 10, 5;
+    }
+
+    .vertical {
+      stroke-width: 1px;
+      stroke: darkgreen;
+    }
+
+    .axistext {
+      font-size: 14px;
+    }
+
+    #selector {
+      margin-left: 50px;
+    }
+
+    .meanpoint {
+      visibility: hidden;
+    }
+  </style>
+
+</head>
+
+
+<body>
+
+  <div>
+    <button id="resample" name = "button">Resample</button>
+    <button id="sse" name = "button">Error SS</button>
+    <button id="ssm" name = "button">Treatment SS</button>
+    <button id="sst" name = "button">Total SS</button>
+    <button id="groupMeans" name = "button">Group Means</button>
+    <label for="sigma">StDev </label>
+    <input id="sigma" type="number" value="2.5" step="0.1" min="0" max="5">
+  </div>
+  <div class="chart"></div>
+  <p = "report">
+    Error SS:   <span id="sse-value"></span>  
+    Treatment SS:  <span id="ssm-value"></span>  
+    Total SS:  <span id="sst-value"></span>
+    R^2:  <span id="r2-value"></span>
+  </p>
+
+  <script src="scripts/d3.min.js"></script>
+  <script src="scripts/r2.js"></script>
+
+</body>
+
+</html>
