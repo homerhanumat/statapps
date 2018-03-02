@@ -16,7 +16,7 @@ const minAllowedGroupMean = 10;
 const maxAllowedGroupMean = 30;
 let groupMeans = Array(groupNumber).fill(20);
 const maxSigma = 5;
-let sigma = 3;
+let sigma = 2.5;
 
 // set up x-scale now
 const x = d3.scaleBand()
@@ -91,6 +91,9 @@ svgInside.append("g")
   .call(yAxis);
 
 drawAll(data);
+document.querySelector("#sigmavalue")
+  .innerHTML = `Sigma: ${sigma}`;
+document.querySelector("#sigma").value = sigma.toFixed(2);
 
 // FUNCTIONS .........................................................
 function gaussian(a, b) {
@@ -198,7 +201,9 @@ function sigmaHandler() {
   clearErrorLines();
   clearTreatmentLines();
   clearTotalLines();
-  sigma = this.value;
+  sigma = parseFloat(this.value);
+  document.querySelector("#sigmavalue")
+    .innerHTML = `Sigma: ${sigma.toFixed(2)}`;
   updateData();
   updateOutputs();
   drawAll(data);
@@ -224,6 +229,9 @@ function groupMeansHandler() {
   clearTreatmentLines();
   clearTotalLines();
   clearErrorLines();
+  svgInside.selectAll(".groupYbar")
+    .classed("active", true)
+    .classed("inactive", false);
   svgInside.selectAll(".groupMean")
     .classed("active", true)
     .classed("inactive", false);
@@ -235,6 +243,9 @@ function groupMeansHandler() {
 function sseHandler() {
   clearTreatmentLines();
   clearTotalLines();
+  svgInside.selectAll(".groupYbar")
+    .classed("active", true)
+    .classed("inactive", false);
   svgInside.selectAll(".groupMeanUse")
     .classed("inactive", true);
   svgInside.selectAll(".groupMean")
@@ -251,6 +262,9 @@ function ssmHandler() {
   clearTotalLines();
   svgInside.selectAll(".point")
     .style("opacity", 0.3);
+  svgInside.selectAll(".groupYbar")
+    .classed("active", true)
+    .classed("inactive", false);
   svgInside.selectAll(".groupMeanUse")
     .classed("inactive", true);
   svgInside.selectAll(".groupMean")
@@ -275,6 +289,9 @@ function ssmHandler() {
 function sstHandler() {
   clearErrorLines();
   clearTreatmentLines();
+  svgInside.selectAll(".groupYbar")
+    .classed("active", false)
+    .classed("inactive", true);
   svgInside.selectAll(".groupMeanUse")
     .classed("inactive", true);
   svgInside.selectAll(".groupMean")
@@ -424,3 +441,57 @@ function drawAll(data) {
   svgInside.selectAll(".groupMeanUse")
     .classed("active", true);
 }
+
+// Slider ............................................
+
+const slider = document.querySelector('#sigma');
+rangeSlider.create(slider, {
+    polyfill: true,     // 
+    rangeClass: 'rangeSlider',
+    disabledClass: 'rangeSlider--disabled',
+    fillClass: 'rangeSlider__fill',
+    bufferClass: 'rangeSlider__buffer',
+    handleClass: 'rangeSlider__handle',
+    startEvent: ['mousedown', 'touchstart', 'pointerdown'],
+    moveEvent: ['mousemove', 'touchmove', 'pointermove'],
+    endEvent: ['mouseup', 'touchend', 'pointerup'],
+    vertical: false,    // Boolean, 
+    min: 0,          // Number , 0
+    max: maxSigma,          // Number, 100
+    step: 0.1,         // Number, 1
+    value: sigma,        // Number, center of slider
+    buffer: null,       // Number, in percent, 0 by default
+    stick: null,        // [Number stickTo, Number stickRadius] 
+    borderRadius: 10,   // Number, 
+    onInit: function () {
+        console.info('onInit')
+    }
+  //   ,
+  //   onSlideStart: function (position, value) {
+  //       console.info('onSlideStart', 'position: ' + position, 'value: ' + value);
+  //   },
+  //   onSlide: function (position, value) {
+  //     console.warn('onSlideEnd', 'position: ' + position, 'value: ' + value);
+  // },
+  //   onSlideEnd: function (position, value) {
+  //       console.warn('onSlideEnd', 'position: ' + position, 'value: ' + value);
+  //   }
+});
+
+let triggerEvents = true; // or false
+slider.rangeSlider.update({
+  min : 0, max : 5, step : 0.1, value : 2.5, 
+  buffer : null}, triggerEvents);
+
+// function valueOutput(element) {
+//     console.log("hello");
+//     const value = element.value,
+//       output = element.parentNode.getElementsByTagName('output')[0];
+//     output.innerHTML = value;
+// }
+
+// document.querySelector("[data-rangeSlider]")
+//   .addEventListener('input', function (e) {
+//     valueOutput(e.target);
+//   }, false);
+

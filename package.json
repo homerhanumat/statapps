@@ -1,0 +1,15 @@
+{
+  "name": "statapps",
+  "version": "0.1.0",
+  "description": "Statistics educational apps as D3 practice",
+  "dependencies": {
+    "d3v4": "^4.2.2",
+    "rangeslider-pure": "^0.4.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/homerhanumat/statapps"
+  },
+  "author": "Homer White",
+  "license": "MIT"
+}
